@@ -29,9 +29,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,11 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import ui.theme.AppTheme
+import utils.getFirstDateOfWeek
+import utils.getIndexOfTodayWeek
+import utils.getNextDates
 import utils.minus
 import utils.now
 import utils.plus
@@ -128,21 +130,37 @@ fun HorizontalCalendar(
     shouldScrollToCurrentWeek: Boolean,
     onScrollToCurrentWeek: () -> Unit
 ) {
-    val today = LocalDateTime.now()
-    val initialDate = getFirstDateOfWeek(now = today)
-    val dates = getPreviousAndNextDatesSpacedBy(baseDate = initialDate, count = 20)
-    val initialPage = dates.indexOf(initialDate)
+    val today = remember { LocalDateTime.now() }
+    val firstDateOfTodayWeek = remember { today.getFirstDateOfWeek() }
+    val listOfDates = remember {
+        mutableStateOf(
+            getPreviousAndNextDatesSpacedBy(baseDate = firstDateOfTodayWeek, count = 4)
+        )
+    }
     val pagerState = rememberPagerState(
-        initialPage = initialPage,
+        initialPage = listOfDates.value.getIndexOfTodayWeek(),
         pageCount = {
-            dates.size
+            listOfDates.value.size
         }
     )
 
     if (shouldScrollToCurrentWeek) {
         LaunchedEffect(pagerState) {
-            pagerState.animateScrollToPage(initialPage)
+            pagerState.animateScrollToPage(listOfDates.value.getIndexOfTodayWeek())
             onScrollToCurrentWeek()
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            val isLastPage = { page == listOfDates.value.size - 1 }
+            if (isLastPage()) {
+                val nextDates = listOfDates.value[page]
+                    .getNextDates(count = 2, diff = 7, selfInclude = false)
+                val newDates = listOfDates.value + nextDates
+                listOfDates.value = newDates
+            }
+            // TODO Get previous dates
         }
     }
 
@@ -158,7 +176,7 @@ fun HorizontalCalendar(
             state = pagerState,
             pageSize = PageSize.Fill
         ) { pageIndex ->
-            val allDatesOfWeek = getNextDates(dates[pageIndex])
+            val allDatesOfWeek = listOfDates.value[pageIndex].getNextDates()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -346,17 +364,6 @@ fun todaysDate(): String {
     return now.toLocalDateTime(zone).format()
 }
 
-fun getFirstDateOfWeek(
-    now: LocalDateTime = LocalDateTime.now(),
-    firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
-): LocalDateTime {
-    var firstDateOfWeek = now
-    while (firstDateOfWeek.dayOfWeek != firstDayOfWeek) {
-        firstDateOfWeek = firstDateOfWeek.minus(24, DateTimeUnit.HOUR)
-    }
-    return firstDateOfWeek
-}
-
 fun getPreviousAndNextDatesSpacedBy(
     baseDate: LocalDateTime,
     count: Int,
@@ -367,13 +374,13 @@ fun getPreviousAndNextDatesSpacedBy(
     val previousDates = mutableListOf<LocalDateTime>()
     val nextDates = mutableListOf<LocalDateTime>()
     var currentDate = baseDate
-    for (previousCount in 0..countForEach) {
+    for (previousCount in 0..<countForEach) {
         val newDate = currentDate.minus(24 * diff, DateTimeUnit.HOUR)
         previousDates.add(newDate)
         currentDate = newDate
     }
     currentDate = baseDate
-    for (nextCount in 0..countForEach) {
+    for (nextCount in 0..<countForEach) {
         val newDate = currentDate.plus(24 * diff, DateTimeUnit.HOUR)
         nextDates.add(newDate)
         currentDate = newDate
@@ -381,19 +388,5 @@ fun getPreviousAndNextDatesSpacedBy(
     allDates.addAll(previousDates.reversed())
     allDates.add(baseDate)
     allDates.addAll(nextDates)
-    return allDates
-}
-
-fun getNextDates(
-    date: LocalDateTime,
-    count: Int = 7
-): List<LocalDateTime> {
-    val allDates = mutableListOf(date)
-    var currentDate = date
-    for (nextCount in 1..<count) {
-        val newDate = currentDate.plus(24, DateTimeUnit.HOUR)
-        allDates.add(newDate)
-        currentDate = newDate
-    }
     return allDates
 }
