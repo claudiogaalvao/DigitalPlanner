@@ -38,18 +38,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import ui.theme.AppTheme
+import utils.DAYS_PER_WEEK
 import utils.getFirstDateOfWeek
 import utils.getIndexOfTodayWeek
 import utils.getNextDates
+import utils.getPreviousDates
 import utils.minus
 import utils.now
 import utils.plus
+
+private const val QUANTITY_ITEMS_TO_LOAD = 8
+private const val INITIAL_ITEMS_COUNT = 5
+private const val INITIAL_ITEMS_TO_LOAD_PREVIOUS_AND_NEXT = INITIAL_ITEMS_COUNT - 1
+private const val TIME_IN_MILLIS_TO_SCROLL_TO_NEW_INDEX = 100L
 
 @Composable
 fun App() {
@@ -134,7 +142,10 @@ fun HorizontalCalendar(
     val firstDateOfTodayWeek = remember { today.getFirstDateOfWeek() }
     val listOfDates = remember {
         mutableStateOf(
-            getPreviousAndNextDatesSpacedBy(baseDate = firstDateOfTodayWeek, count = 4)
+            getPreviousAndNextDatesSpacedBy(
+                baseDate = firstDateOfTodayWeek,
+                count = INITIAL_ITEMS_TO_LOAD_PREVIOUS_AND_NEXT
+            )
         )
     }
     val pagerState = rememberPagerState(
@@ -154,13 +165,20 @@ fun HorizontalCalendar(
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
             val isLastPage = { page == listOfDates.value.size - 1 }
+            val isFirstPage = { page == 0 }
             if (isLastPage()) {
                 val nextDates = listOfDates.value[page]
-                    .getNextDates(count = 2, diff = 7, selfInclude = false)
+                    .getNextDates(count = QUANTITY_ITEMS_TO_LOAD, diff = DAYS_PER_WEEK, selfInclude = false)
                 val newDates = listOfDates.value + nextDates
                 listOfDates.value = newDates
+            } else if (isFirstPage()) {
+                val previousDates = listOfDates.value[page]
+                    .getPreviousDates(count = QUANTITY_ITEMS_TO_LOAD, diff = DAYS_PER_WEEK, selfInclude = false)
+                val newDates = previousDates + listOfDates.value
+                listOfDates.value = newDates
+                delay(TIME_IN_MILLIS_TO_SCROLL_TO_NEW_INDEX)
+                pagerState.scrollToPage(QUANTITY_ITEMS_TO_LOAD)
             }
-            // TODO Get previous dates
         }
     }
 
@@ -215,54 +233,6 @@ fun HorizontalCalendar(
             }
         }
     }
-
-//    LazyRow(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .background(
-//                MaterialTheme.colorScheme.surface,
-//                RoundedCornerShape(8.dp)
-//            )
-//    ) {
-//        items(dates) { date ->
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(vertical = 12.dp),
-//            ) {
-//                Text("SEM")
-//                Text(
-//                    text = "${date.dayOfMonth}"
-//                )
-//            }
-//        }
-//    }
-
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
-//        horizontalArrangement = Arrangement.SpaceAround
-//    ) {
-//        daysOfWeek.forEachIndexed { index, day ->
-//            Column(
-//                modifier = Modifier.padding(vertical = 12.dp),
-//                horizontalAlignment = Alignment.CenterHorizontally
-//            ) {
-//                Text(
-//                    text = day.uppercase(),
-//                    fontWeight = FontWeight.Light,
-//                    color = Color.Gray
-//                )
-//                Text(
-//                    modifier = Modifier.padding(top = 4.dp),
-//                    text = index.toString(),
-//                    fontWeight = FontWeight.Light,
-//                    color = Color.White
-//                )
-//            }
-//        }
-//    }
 }
 
 @Composable

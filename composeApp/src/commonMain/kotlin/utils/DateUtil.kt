@@ -3,14 +3,14 @@ package utils
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
+
+const val DAYS_PER_WEEK = 7L
 
 fun LocalDateTime.Companion.now(): LocalDateTime {
     return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -47,6 +47,22 @@ fun List<LocalDateTime>.getIndexOfTodayWeek(): Int {
 }
 
 fun LocalDateTime.getNextDates(
+    count: Int = 6,
+    diff: Long = 1,
+    selfInclude: Boolean = true
+): List<LocalDateTime> {
+    val allDates = mutableListOf<LocalDateTime>()
+    if (selfInclude) allDates.add(this)
+    var currentDate = this
+    for (nextCount in 0..< count) {
+        val newDate = currentDate.plus(24 * diff, DateTimeUnit.HOUR)
+        allDates.add(newDate)
+        currentDate = newDate
+    }
+    return allDates
+}
+
+fun LocalDateTime.getPreviousDates(
     count: Int = 7,
     diff: Long = 1,
     selfInclude: Boolean = true
@@ -54,10 +70,10 @@ fun LocalDateTime.getNextDates(
     val allDates = mutableListOf<LocalDateTime>()
     if (selfInclude) allDates.add(this)
     var currentDate = this
-    for (nextCount in 1..<count) {
-        val newDate = currentDate.plus(24 * diff, DateTimeUnit.HOUR)
+    for (nextCount in 0..< count) {
+        val newDate = currentDate.minus(24 * diff, DateTimeUnit.HOUR)
         allDates.add(newDate)
         currentDate = newDate
     }
-    return allDates
+    return allDates.reversed()
 }
