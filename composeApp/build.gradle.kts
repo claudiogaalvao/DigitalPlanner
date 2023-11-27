@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.ExperimentalComposeLibrary
 
 plugins {
@@ -34,7 +33,7 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.material)
 
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+                implementation(libs.kotlinx.datetime)
             }
         }
         androidMain.dependencies {
@@ -50,6 +49,8 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
+            api(libs.precompose)
+            api(libs.precompose.viewmodel)
         }
     }
 }

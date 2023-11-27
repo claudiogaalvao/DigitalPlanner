@@ -22,6 +22,10 @@ fun LocalDateTime.plus(value: Long, unit: DateTimeUnit.TimeBased): LocalDateTime
         .toLocalDateTime(timeZone)
 }
 
+fun LocalDateTime.plusDays(value: Long): LocalDateTime {
+    return this.plus(value * 24, DateTimeUnit.HOUR)
+}
+
 fun LocalDateTime.minus(value: Long, unit: DateTimeUnit.TimeBased): LocalDateTime {
     val timeZone = TimeZone.currentSystemDefault()
     return this.toInstant(timeZone)
